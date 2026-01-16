@@ -1,4 +1,10 @@
 {
   "schedule": "*/30 * * * * *",
-  "apiUrl": "https://api.mathjs.org/v4/?expr=randomInt(1,101)"
+  "apiUrl": "https://api.mathjs.org/v4/?expr=randomInt(1,101)",
+  "evms": [
+    {
+      "storageAddress": "0xa17CF997C28FF154eDBae1422e6a50BeF23927F4",
+      "chainName": "ethereum-testnet-sepolia"
+    }
+  ]
 }

@@ -1,12 +1,31 @@
-import { cre, consensusMedianAggregation, Runner, type NodeRuntime, type Runtime } from "@chainlink/cre-sdk"
+import {
+  cre,
+  consensusMedianAggregation,
+  Runner,
+  type NodeRuntime,
+  type Runtime,
+  getNetwork,
+  LAST_FINALIZED_BLOCK_NUMBER,
+  encodeCallMsg,
+  bytesToHex,
+} from "@chainlink/cre-sdk"
+import { encodeFunctionData, decodeFunctionResult, zeroAddress } from "viem"
+import { Storage } from "../contracts/abi"
+
+// EvmConfig defines the configuration for a single EVM chain.
+type EvmConfig = {
+  storageAddress: string
+  chainName: string
+}
 
 type Config = {
   schedule: string
   apiUrl: string
+  evms: EvmConfig[]
 }
 
 type MyResult = {
-  result: bigint
+  finalResult: bigint
 }
 
 const initWorkflow = (config: Config) => {
@@ -16,7 +35,6 @@ const initWorkflow = (config: Config) => {
 }
 
 // fetchMathResult is the function passed to the runInNodeMode helper.
-// It contains the logic for making the request and parsing the response.
 const fetchMathResult = (nodeRuntime: NodeRuntime<Config>): bigint => {
   const httpClient = new cre.capabilities.HTTPClient()
 
@@ -25,11 +43,7 @@ const fetchMathResult = (nodeRuntime: NodeRuntime<Config>): bigint => {
     method: "GET" as const,
   }
 
-  // Send the request using the HTTP client
   const resp = httpClient.sendRequest(nodeRuntime, req).result()
-
-  // The mathjs.org API returns the result as a raw string in the body.
-  // We need to parse it into a bigint.
   const bodyText = new TextDecoder().decode(resp.body)
   const val = BigInt(bodyText.trim())
 
@@ -37,16 +51,60 @@ const fetchMathResult = (nodeRuntime: NodeRuntime<Config>): bigint => {
 }
 
 const onCronTrigger = (runtime: Runtime<Config>): MyResult => {
-  runtime.log("Hello, Calculator! Workflow triggered.")
-  // Use runInNodeMode to execute the offchain fetch.
-  // The API returns a random number, so each node can get a different result.
-  // We use median consensus to find a single, trusted value.
-  const result = runtime.runInNodeMode(fetchMathResult, consensusMedianAggregation())().result()
+  // Step 1: Fetch offchain data (from Part 2)
+  const offchainValue = runtime.runInNodeMode(fetchMathResult, consensusMedianAggregation())().result()
 
-  runtime.log(`Successfully fetched and aggregated math result: ${result}`)
+  runtime.log(`Successfully fetched offchain value: ${offchainValue}`)
+
+  // Get the first EVM configuration from the list.
+  const evmConfig = runtime.config.evms[0]
+
+  // Step 2: Read onchain data using the EVM client
+  // Convert the human-readable chain name to a chain selector
+  const network = getNetwork({
+    chainFamily: "evm",
+    chainSelectorName: evmConfig.chainName,
+    isTestnet: true,
+  })
+  if (!network) {
+    throw new Error(`Unknown chain name: ${evmConfig.chainName}`)
+  }
+
+  const evmClient = new cre.capabilities.EVMClient(network.chainSelector.selector)
+
+  // Encode the function call using the Storage ABI
+  const callData = encodeFunctionData({
+    abi: Storage,
+    functionName: "get",
+  })
+
+  // Call the contract
+  const contractCall = evmClient
+    .callContract(runtime, {
+      call: encodeCallMsg({
+        from: zeroAddress,
+        to: evmConfig.storageAddress as `0x${string}`,
+        data: callData,
+      }),
+      blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+    })
+    .result()
+
+  // Decode the result
+  const onchainValue = decodeFunctionResult({
+    abi: Storage,
+    functionName: "get",
+    data: bytesToHex(contractCall.data),
+  }) as bigint
+
+  runtime.log(`Successfully read onchain value: ${onchainValue}`)
+
+  // Step 3: Combine the results
+  const finalResult = onchainValue + offchainValue
+  runtime.log(`Final calculated result: ${finalResult}`)
 
   return {
-    result,
+    finalResult,
   }
 }
 
