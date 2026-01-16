@@ -16874,7 +16874,6 @@ async function main() {
   const runner = await Runner.newRunner();
   await runner.run(initWorkflow);
 }
-main();
 main().catch(sendErrorResponse);
 export {
   main
