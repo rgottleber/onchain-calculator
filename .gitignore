@@ -1,1 +1,3 @@
 *.env
+my-calculator-workflow/tmp.js
+my-calculator-workflow/tmp.wasm
