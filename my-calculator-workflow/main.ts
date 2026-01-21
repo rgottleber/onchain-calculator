@@ -4,6 +4,7 @@ import {
   Runner,
   type NodeRuntime,
   type Runtime,
+  // NEW: NEW STEP 3
   getNetwork,
   LAST_FINALIZED_BLOCK_NUMBER,
   encodeCallMsg,
@@ -17,14 +18,16 @@ type EvmConfig = {
   storageAddress: string
   chainName: string
 }
-
+// NEW: END STEP 3
 type Config = {
   schedule: string
   apiUrl: string
+  // NEW:
   evms: EvmConfig[]
 }
 
 type MyResult = {
+  // NEW:
   finalResult: bigint
 }
 
@@ -54,6 +57,7 @@ const onCronTrigger = (runtime: Runtime<Config>): MyResult => {
   // Step 1: Fetch offchain data (from Part 2)
   const offchainValue = runtime.runInNodeMode(fetchMathResult, consensusMedianAggregation())().result()
 
+  // NEW: STEP 3
   runtime.log(`Successfully fetched offchain value: ${offchainValue}`)
 
   // Get the first EVM configuration from the list.
@@ -102,7 +106,7 @@ const onCronTrigger = (runtime: Runtime<Config>): MyResult => {
   // Step 3: Combine the results
   const finalResult = onchainValue + offchainValue
   runtime.log(`Final calculated result: ${finalResult}`)
-
+// NEW: END STEP 3
   return {
     finalResult,
   }
