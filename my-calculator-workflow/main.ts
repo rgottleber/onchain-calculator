@@ -8,14 +8,17 @@ import {
   LAST_FINALIZED_BLOCK_NUMBER,
   encodeCallMsg,
   bytesToHex,
+  // NEW:
   hexToBase64,
 } from "@chainlink/cre-sdk"
+// NEW:
 import { encodeAbiParameters, parseAbiParameters, encodeFunctionData, decodeFunctionResult, zeroAddress } from "viem"
 import { Storage } from "../contracts/abi"
 
 type EvmConfig = {
   chainName: string
   storageAddress: string
+  // NEW: 
   calculatorConsumerAddress: string
   gasLimit: string
 }
@@ -26,6 +29,7 @@ type Config = {
   evms: EvmConfig[]
 }
 
+// NEW:
 // MyResult struct now holds all the outputs of our workflow.
 type MyResult = {
   offchainValue: bigint
@@ -85,6 +89,7 @@ const onCronTrigger = (runtime: Runtime<Config>): MyResult => {
 
   runtime.log(`Successfully read onchain value: ${onchainValue}`)
 
+  //NEW: STEP 4
   // Step 3: Calculate the final result
   const finalResultValue = onchainValue + offchainValue
 
@@ -111,7 +116,7 @@ const onCronTrigger = (runtime: Runtime<Config>): MyResult => {
   runtime.log(
     `Workflow finished successfully! offchainValue: ${offchainValue}, onchainValue: ${onchainValue}, finalResult: ${finalResultValue}, txHash: ${txHash}`
   )
-
+  // NEW: END STEP 4
   return finalWorkflowResult
 }
 
@@ -129,7 +134,7 @@ const fetchMathResult = (nodeRuntime: NodeRuntime<Config>): bigint => {
 
   return val
 }
-
+// NEW: STEP 4
 // updateCalculatorResult handles the logic for writing data to the CalculatorConsumer contract.
 function updateCalculatorResult(
   runtime: Runtime<Config>,
@@ -181,6 +186,7 @@ function updateCalculatorResult(
   runtime.log(`View transaction at https://sepolia.etherscan.io/tx/${txHash}`)
   return txHash
 }
+// NEW: END STEP 4
 
 export async function main() {
   const runner = await Runner.newRunner<Config>()
