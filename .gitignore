@@ -1,3 +1,4 @@
 *.env
 my-calculator-workflow/tmp.js
 my-calculator-workflow/tmp.wasm
+my-calculator-workflow/.cre_build_tmp.js
